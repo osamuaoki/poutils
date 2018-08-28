@@ -1,0 +1,6 @@
+poutils (0.1-1) unstable; urgency=low
+
+  * Initial release. Closes: #nnnn
+    <nnnn is the bug number of your ITP>
+
+ -- Osamu Aoki <osamu@debian.org>  Mon, 27 Aug 2018 23:34:49 +0900
