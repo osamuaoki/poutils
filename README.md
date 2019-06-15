@@ -49,6 +49,7 @@ data. (Sometimes the PO data may need to be converted to the MO format by
 * ??? (Sphinx may be converting directly to the final format data such html for
   each l10n targets from the combination of the master data and the PO data
   without generating l10n RST source.)
+    * Easy way: `make gettext` in source tree makes POT
 
 This workflow helps to keep up translated output in sync with the master
 output.
@@ -94,6 +95,7 @@ POT data.  So I see some advantage of `po_combine` over `po4a-gettextize` even
 for `po4a`. YMMV.
 
 TIP: `pandoc` is a nice document data format conversion tool.
+      See Debian developers-reference transition history.
 
 
 ## Development of this package
