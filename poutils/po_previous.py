@@ -38,9 +38,11 @@ def po_previous():
             description = '''\
 {0}: Recover previous msgid (from wdiff-format)              Version: {1}
 
+This revert the po file converted by the po_wdiff to the original state.
+
 {2}
 '''.format(name, poutils.version, poutils.copyright),
-            epilog='See {}(1) manpage for more.'.format(name))
+            epilog='See "po_wdiff -h".')
     p.add_argument(
             '-k',
             '--keep',

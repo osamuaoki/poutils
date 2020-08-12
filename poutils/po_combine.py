@@ -23,13 +23,13 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 import argparse
-import os       # for os.path.basename etc. 
+import os       # for os.path.basename etc.
 import sys      # sys.stderr etc.
 # To test this in place, setup a symlink with "ln -sf . poutils"
 import poutils
 #######################################################################
 # main program
-####################################################################### 
+#######################################################################
 def po_combine():
     name = 'po_combine'
     p = argparse.ArgumentParser(
@@ -52,7 +52,7 @@ Normal translation workflow using the gettext-like infrastructure is:
                   +--------------------------------+--> translated data
 
 The POT data is automatically generated without human intervention from the
-master data.  Let's call this functionality as the POT extractor. E.g.: 
+master data.  Let's call this functionality as the POT extractor. E.g.:
 
 * xgettext (original tool by the gettext infrastructure covering strings in
   programs)
@@ -114,15 +114,26 @@ such as "#. type: Content of: <book><chapter><title>" should make the align
 and match task easier with this po_combine workflow.
 
 For po4a, po4a-gettextize with -l option facilitates this functionality.
-(Also, for poxml, split2po facilitates this functionality.) But I find the
+(Also, for poxml, split2po facilitates this functionality.) I find the
 requirement to align and match the master data and the translated data in their
-original format is more trouble than doing it on the POT data.  So I see some
-advantage of po_combine over po4a-gettextize even for po4a. YMMV.
+original format is more trouble than doing it on the POT data.  This is very
+true when the translated data is based on older master data with many mussing
+paragraphs.  For such cases, I see some advantage of po_combine over
+po4a-gettextize even for po4a.  But po_combine has some negatives when multiple
+similar original strings are translated into the same string causing wrong
+alignment.  If the master and translated data match, using the native tool such
+as po4a-gettextize with -l option is the better choice.  YMMV.
 
 TIP: pandoc is a nice document data format conversion tool.
 
 See {}(1) manpage for more.
 '''.format(name))
+    p.add_argument(
+            '-f',
+            '--force',
+            action = 'store_true',
+            default = False,
+            help = 'force to combine')
     p.add_argument("master_pot", help="POT file from the English source")
     p.add_argument("translated_pot", help="POT file from the translated source")
     p.add_argument("output", help="Output PO file")
@@ -135,7 +146,7 @@ See {}(1) manpage for more.
             translation.read_po(file=fp_translated_pot)
     master.normalize()
     translation.normalize()
-    master.combine_pots(translation)
+    master.combine_pots(translation, force=args.force)
     master.clean_msgstr(pattern_extracted=r'<screen>', pattern_msgid=r'^https?://')
     with open(args.output, "w") as fp_output:
         master.output_po(file=fp_output)

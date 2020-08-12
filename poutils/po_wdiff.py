@@ -30,7 +30,7 @@ import shutil
 import poutils
 #######################################################################
 # main program
-####################################################################### 
+#######################################################################
 def po_wdiff():
     name = 'po_wdiff'
     p = argparse.ArgumentParser(
@@ -40,7 +40,21 @@ def po_wdiff():
 
 {2}
 '''.format(name, poutils.version, poutils.copyright),
-            epilog='See {}(1) manpage for more.'.format(name))
+            epilog='''\
+If you enables "--previous" option for "msgmerge", and upstream text
+changes, corresponding entry in the updated po file looks like:
+
+---
+#, fuzzy
+#| msgid "previous english text"
+msgid "new english text"
+msgstr "old translated text"
+---
+
+Sometimes, it's not easy to see what is the change.  This convert
+the "#| msgid" line into wdiff.  You can revert this conversion
+using the "po_previous" command.
+''')
     p.add_argument(
             '-k',
             '--keep',

@@ -45,8 +45,8 @@ import difflib  # for wdiff
 #######################################################################
 # Basic constants
 #######################################################################
-version = '0.1'
-copyright = 'Copyright © 2018 Osamu Aoki <osamu@debian.org>'
+version = '0.2'
+copyright = 'Copyright © 2018 -2020 Osamu Aoki <osamu@debian.org>'
 #######################################################################
 # Basic Class to handle POT/PO data
 #######################################################################
@@ -68,6 +68,7 @@ class PotItem:
         self.comment = []
         self.extracted = []
         self.reference = []
+        self.number_ref = 0
         self.flag = []
         self.pmsgid = ""
         self.msgid = ""
@@ -117,6 +118,7 @@ class PotData():
                 type = Line.EXTRACTED
             elif l[0:2] == '#:':            # REFERENCE…
                 item.reference.append(l)
+                item.number_ref += len(l[3:].split(' '))
                 type = Line.REFERENCE
             elif l[0:2] == '#,':            # FLAG…
                 item.flag.append(l)
@@ -304,7 +306,7 @@ class PotData():
                 j = n - 1 - i
                 if self.items[j].msgid == '' and self.items[j].msgstr == '' and len(self.items[j].obsolete) == 0:
                     del (self.items[j])
-                
+
     def normalize_extracted(self, keep_last_extracted=True):
         self.normalize(keep_last_extracted=keep_last_extracted, \
                 drop_comment=False, \
@@ -312,25 +314,65 @@ class PotData():
                 drop_pmsgid=False, drop_obsolete=False)
         return
 
-    def combine_pots(self, translation, check_extracted=False):
-        for i, item in enumerate(self.items):
-            if i >= len(translation.items):
+    def combine_pots(self, translation, force=False):
+        if len(self.items) > len(translation.items):
+            print("""\
+E: *** master: {} > translation: {} ***
+
+   Different strings (msgid) in master may be translated into
+   a same string (msgstr) in translation.
+
+   Drop problematic entity in master or add duplicate entity in
+   translation to align master and translation data.
+
+   This often happens when capitalization or any trivial
+   typographical differences in master are merged into
+   a same translated string in translation.
+
+""".format(len(self.items), len(translation.items)))
+        if len(self.items) < len(translation.items):
+            print("""\
+E: *** master: {} < translation: {} ***
+
+   A same string (msgid) in master may be translated into
+   different strings (msgstr) in translation.
+
+   Drop problematic entity in translation and unify translation
+   differences.
+
+   This should be rare case.
+
+""".format(len(self.items), len(translation.items)))
+        num_warn_extracted = 0
+        num_warn_ref = 0
+        j = 0
+        for item in self.items:
+            if j >= len(translation.items):
                 break
             if item.msgid == "":
-                item.msgstr = translation.items[i].msgstr
+                # header part
+                item.msgstr = translation.items[j].msgstr
+                j += 1
             else:
-                if not check_extracted or \
-                    ( not item.extracted and not translation.items[i].extracted ) or \
-                    item.extracted and translation.items[i].extracted and \
-                   item.extracted[0] == translation.items[i].extracted[0]:
-                    item.msgstr = translation.items[i].msgid
+                # normal part
+                if item.number_ref != translation.items[j].number_ref:
+                    num_warn_ref += 1
+                    item.reference.append("#: XXX mismatched references: {} --> {}".format(item.number_ref, translation.items[j].number_ref))
+                    item.reference.extend(translation.items[j].reference)
+                if item.extracted[0] != translation.items[j].extracted[0]:
+                    num_warn_extracted += 1
+                    item.extracted.append("#. XXX mismatched extracted tag pattern")
+                    item.extracted.extend(translation.items[j].extracted)
+                    if force:
+                        item.msgstr = translation.items[j].msgid
+                        j += 1
                 else:
-                    print("E: *** master: {} != translation: {} ***".format(item.extracted[0], translation.items[i].extracted[0]))
-                    break
-        if len(self.items) > len(translation.items):
-            print("E: *** master: {} > translation: {} ***".format(len(self.items), len(translation.items)))
-        if len(self.items) < len(translation.items):
-            print("E: *** master: {} < translation: {} ***".format(len(self.items), len(translation.items)))
+                    item.msgstr = translation.items[j].msgid
+                    j += 1
+        if num_warn_extracted > 0:
+            print("E: *** mismatched extracted tag pattern: {}".format(num_warn_extracted))
+        if num_warn_ref > 0:
+            print("E: *** mismatched references: {}".format(num_warn_ref))
         return
 
 #######################################################################
