@@ -99,7 +99,7 @@ class PotData():
         self.items.append(item)
         return
 
-    def read(self, fp):
+    def read_po(self, file=sys.stdin):
         item = PotItem()
         j = 0 # line counter
         type = Line.INITIAL                # BEGIN OF FILE
@@ -157,7 +157,7 @@ class PotData():
             self.items.append(item)
         return
 
-    def output_raw(self, fp):
+    def output_raw(self, file=sys.stdout):
         for item in self.items:
             if len(item.obsolete) == 0:
                 for l in item.comment:
@@ -178,14 +178,14 @@ class PotData():
             print("", file=fp)
         return
 
-    def output(self, fp, wrap=True):
+    def output_po(self, file=sys.stdout, wrap=True):
         if wrap:
             with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as ftmp:
-                self.output_raw(ftmp)
+                self.output_raw(file=ftmp)
                 ftmp.seek(0)
                 subprocess.run(["msgcat", "-"], stdin=ftmp, stdout=fp, stderr=sys.stderr, encoding="utf-8")
         else:
-            self.output_raw(fp)
+            self.output_raw(file=file)
         return
 
     def clean_msgstr(self, pattern_extracted=None, pattern_msgid=None):
@@ -339,11 +339,11 @@ class PotData():
 if __name__ == '__main__':
     pots = PotData()
     with open("de.po") as fp:
-        pots.read(fp)
+        pots.read_po(file=fp)
     for i in range(0,5):
         item = PotItem()
         item.msgid = "FOO ID xxxxxx xxxxxxxxxxxxxxxxxx {}".format(i)
         item.msgstr = "FOO STR zzzzzzzzzzzzzzzzzzzzzzz {}".format(i)
         pots.append(item)
     pots.normalize_extracted()
-    pots.output_raw(sys.stdout)
+    pots.output_raw(file=sys.stdout)

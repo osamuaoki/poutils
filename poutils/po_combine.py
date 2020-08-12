@@ -130,15 +130,15 @@ See {}(1) manpage for more.
     master = poutils.PotData()
     translation = poutils.PotData()
     with open(args.master_pot, "r") as fp_master_pot:
-        master.read(fp_master_pot)
+        master.read_po(file=fp_master_pot)
         with open(args.translated_pot, "r") as fp_translated_pot:
-            translation.read(fp_translated_pot)
+            translation.read_po(file=fp_translated_pot)
     master.normalize()
     translation.normalize()
     master.combine_pots(translation)
     master.clean_msgstr(pattern_extracted=r'<screen>', pattern_msgid=r'^https?://')
     with open(args.output, "w") as fp_output:
-        master.output(fp_output)
+        master.output_po(file=fp_output)
     return
 
 #######################################################################

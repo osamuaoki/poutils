@@ -51,12 +51,12 @@ def po_previous():
     args = p.parse_args()
     master = poutils.PotData()
     with open(args.po, "r") as fp:
-        master.read(fp)
+        master.read_po(file=fp)
     master.previous_msgid()
     if args.keep:
         shutil.move(args.po, args.po + ".orig")
     with open(args.po, "w") as fp:
-        master.output(fp)
+        master.output_po(file=fp)
     return
 
 #######################################################################
