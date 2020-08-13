@@ -23,30 +23,36 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 import argparse
-import os       # for os.path.basename etc. 
-import sys      # sys.stderr etc.
+import os  # for os.path.basename etc.
+import sys  # sys.stderr etc.
 import shutil
+
 # To test this in place, setup a symlink with "ln -sf . poutils"
 import poutils
+
 #######################################################################
 # main program
-####################################################################### 
+#######################################################################
 def po_update():
-    name = 'po_update'
+    name = "po_update"
     p = argparse.ArgumentParser(
-            formatter_class=argparse.RawDescriptionHelpFormatter,
-            description = '''\
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="""\
 {0}: Update msgstr if msgstr == previous msgid            Version: {1}
 
 {2}
-'''.format(name, poutils.version, poutils.copyright),
-            epilog='See {}(1) manpage for more.'.format(name))
+""".format(
+            name, poutils.version, poutils.copyright
+        ),
+        epilog="See {}(1) manpage for more.".format(name),
+    )
     p.add_argument(
-            '-k',
-            '--keep',
-            action = 'store_true',
-            default = False,
-            help = 'keep original file as *.orig')
+        "-k",
+        "--keep",
+        action="store_true",
+        default=False,
+        help="keep original file as *.orig",
+    )
     p.add_argument("po", help="PO file")
     args = p.parse_args()
     master = poutils.PotData()
@@ -59,8 +65,9 @@ def po_update():
         master.output_po(file=fp)
     return
 
+
 #######################################################################
 # This program functions differently if called via symlink
 #######################################################################
-if __name__ == '__main__':
+if __name__ == "__main__":
     po_update()

@@ -23,44 +23,51 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 import argparse
-import sys      # sys.stderr etc.
+import sys  # sys.stderr etc.
 import shutil
-import os       # for os.path.basename etc. 
+import os  # for os.path.basename etc.
+
 # To test this in place, setup a symlink with "ln -sf . poutils"
 import poutils
+
 #######################################################################
 # main program
-####################################################################### 
+#######################################################################
 def po_clean():
-    name = 'po_clean'
+    name = "po_clean"
     p = argparse.ArgumentParser(
-            formatter_class=argparse.RawDescriptionHelpFormatter,
-            description = '''\
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="""\
 {0}: make a PO file clean by removing identical ones as msgid  Version: {1}
 
 {2}
-'''.format(name, poutils.version, poutils.copyright),
-            epilog = 'See {}(1) manpage for more.'.format(name))
+""".format(
+            name, poutils.version, poutils.copyright
+        ),
+        epilog="See {}(1) manpage for more.".format(name),
+    )
     p.add_argument(
-            '-k',
-            '--keep',
-            action = 'store_true',
-            default = False,
-            help = 'keep original file as *.orig')
+        "-k",
+        "--keep",
+        action="store_true",
+        default=False,
+        help="keep original file as *.orig",
+    )
     p.add_argument("po", help="PO file")
     args = p.parse_args()
     master = poutils.PotData()
     with open(args.po, "r") as fp:
         master.read_po(file=fp)
-    master.clean_msgstr(pattern_extracted=r'<screen>', pattern_msgid=r'^https?://')
+    master.clean_msgstr(pattern_extracted=r"<screen>", pattern_msgid=r"^https?://")
     if args.keep:
         shutil.move(args.po, args.po + ".orig")
     with open(args.po, "w") as fp:
         master.output_po(file=fp)
     return
 
+
 #######################################################################
 # This program functions differently if called via symlink
 #######################################################################
-if __name__ == '__main__':
+if __name__ == "__main__":
     po_clean()

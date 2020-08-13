@@ -23,32 +23,38 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 import argparse
-import os       # for os.path.basename etc. 
-import sys      # sys.stderr etc.
+import os  # for os.path.basename etc.
+import sys  # sys.stderr etc.
 import shutil
+
 # To test this in place, setup a symlink with "ln -sf . poutils"
 import poutils
+
 #######################################################################
 # main program
-####################################################################### 
+#######################################################################
 def po_previous():
-    name = 'po_previous'
+    name = "po_previous"
     p = argparse.ArgumentParser(
-            formatter_class=argparse.RawDescriptionHelpFormatter,
-            description = '''\
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="""\
 {0}: Recover previous msgid (from wdiff-format)              Version: {1}
 
 This revert the po file converted by the po_wdiff to the original state.
 
 {2}
-'''.format(name, poutils.version, poutils.copyright),
-            epilog='See "po_wdiff -h".')
+""".format(
+            name, poutils.version, poutils.copyright
+        ),
+        epilog='See "po_wdiff -h".',
+    )
     p.add_argument(
-            '-k',
-            '--keep',
-            action = 'store_true',
-            default = False,
-            help = 'keep original file as *.orig')
+        "-k",
+        "--keep",
+        action="store_true",
+        default=False,
+        help="keep original file as *.orig",
+    )
     p.add_argument("po", help="PO file")
     args = p.parse_args()
     master = poutils.PotData()
@@ -61,8 +67,9 @@ This revert the po file converted by the po_wdiff to the original state.
         master.output_po(file=fp)
     return
 
+
 #######################################################################
 # This program functions differently if called via symlink
 #######################################################################
-if __name__ == '__main__':
+if __name__ == "__main__":
     po_previous()

@@ -23,18 +23,20 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 import argparse
-import os       # for os.path.basename etc.
-import sys      # sys.stderr etc.
+import os  # for os.path.basename etc.
+import sys  # sys.stderr etc.
+
 # To test this in place, setup a symlink with "ln -sf . poutils"
 import poutils
+
 #######################################################################
 # main program
 #######################################################################
 def po_combine():
-    name = 'po_combine'
+    name = "po_combine"
     p = argparse.ArgumentParser(
-            formatter_class=argparse.RawDescriptionHelpFormatter,
-            description = '''\
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="""\
 {0}: make a PO file by combining the master and translated POT  Version: {1}
 
 This po_combine is a generic helper program to facilitate the reverse
@@ -42,8 +44,10 @@ translation workflow to create PO data from the master data and the translated
 data.
 
 {2}
-'''.format(name, poutils.version, poutils.copyright),
-            epilog='''\
+""".format(
+            name, poutils.version, poutils.copyright
+        ),
+        epilog="""\
 ## The normal workflow
 
 Normal translation workflow using the gettext-like infrastructure is:
@@ -127,13 +131,13 @@ as po4a-gettextize with -l option is the better choice.  YMMV.
 TIP: pandoc is a nice document data format conversion tool.
 
 See {}(1) manpage for more.
-'''.format(name))
+""".format(
+            name
+        ),
+    )
     p.add_argument(
-            '-f',
-            '--force',
-            action = 'store_true',
-            default = False,
-            help = 'force to combine')
+        "-f", "--force", action="store_true", default=False, help="force to combine"
+    )
     p.add_argument("master_pot", help="POT file from the English source")
     p.add_argument("translated_pot", help="POT file from the translated source")
     p.add_argument("output", help="Output PO file")
@@ -147,13 +151,14 @@ See {}(1) manpage for more.
     master.normalize()
     translation.normalize()
     master.combine_pots(translation, force=args.force)
-    master.clean_msgstr(pattern_extracted=r'<screen>', pattern_msgid=r'^https?://')
+    master.clean_msgstr(pattern_extracted=r"<screen>", pattern_msgid=r"^https?://")
     with open(args.output, "w") as fp_output:
         master.output_po(file=fp_output)
     return
 
+
 #######################################################################
 # This program functions differently if called via symlink
 #######################################################################
-if __name__ == '__main__':
+if __name__ == "__main__":
     po_combine()

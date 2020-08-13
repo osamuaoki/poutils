@@ -37,16 +37,17 @@ This scripts work on PO/POT file having a repeat of the following structure
      WHITE-SPACE | EOF
 """
 import enum
-import sys      # sys.stderr etc.
-import re       # for non-greedy {-...-} and {+...+} handling
+import sys  # sys.stderr etc.
+import re  # for non-greedy {-...-} and {+...+} handling
 import tempfile  # for temporary file
-import subprocess # for shell pipe
+import subprocess  # for shell pipe
 import difflib  # for wdiff
+
 #######################################################################
 # Basic constants
 #######################################################################
-version = '0.2'
-copyright = 'Copyright © 2018 -2020 Osamu Aoki <osamu@debian.org>'
+version = "0.2"
+copyright = "Copyright © 2018 -2020 Osamu Aoki <osamu@debian.org>"
 #######################################################################
 # Basic Class to handle POT/PO data
 #######################################################################
@@ -62,8 +63,8 @@ class Line(enum.Enum):
     BLANK = enum.auto()
     OBSOLETE = enum.auto()
 
-class PotItem:
 
+class PotItem:
     def __init__(self):
         self.comment = []
         self.extracted = []
@@ -78,7 +79,9 @@ class PotItem:
     def reset(self):
         self.__init__()
 
-    refuz = re.compile(r'(?P<head>^#,\s*(?:.*,\s*)?)(?P<fuzzy>fuzzy(?:,\s*)?)(?P<tail>.*$)')
+    refuz = re.compile(
+        r"(?P<head>^#,\s*(?:.*,\s*)?)(?P<fuzzy>fuzzy(?:,\s*)?)(?P<tail>.*$)"
+    )
 
     def unfuzzy(self):
         for i, l in enumerate(self.flag):
@@ -87,11 +90,11 @@ class PotItem:
         n = len(self.flag)
         for i in range(n):
             j = n - 1 - i
-            if self.flag[j] == '#, ':
-                del (self.flag[j])
+            if self.flag[j] == "#, ":
+                del self.flag[j]
 
-class PotData():
 
+class PotData:
     def __init__(self):
         self.items = []
         return
@@ -102,46 +105,46 @@ class PotData():
 
     def read_po(self, file=sys.stdin):
         item = PotItem()
-        j = 0 # line counter
-        type = Line.INITIAL                # BEGIN OF FILE
-        for l in fp:
-            l = l.rstrip() # tailing whitespaces (SP, CR. LF)
-            if l == '' and type == Line.BLANK: # WHITE-SPACE
-                pass # consecutive Line.BLANK
-                #type = Line.BLANK
-            elif l == '' and type != Line.INITIAL: # WHITE-SPACE
+        j = 0  # line counter
+        type = Line.INITIAL  # BEGIN OF FILE
+        for l in file:
+            l = l.rstrip()  # tailing whitespaces (SP, CR. LF)
+            if l == "" and type == Line.BLANK:  # WHITE-SPACE
+                pass  # consecutive Line.BLANK
+                # type = Line.BLANK
+            elif l == "" and type != Line.INITIAL:  # WHITE-SPACE
                 self.items.append(item)
                 item = PotItem()
                 type = Line.BLANK
-            elif l[0:2] == '#.':            # EXTRACTED-COMMENTS
+            elif l[0:2] == "#.":  # EXTRACTED-COMMENTS
                 item.extracted.append(l)
                 type = Line.EXTRACTED
-            elif l[0:2] == '#:':            # REFERENCE…
+            elif l[0:2] == "#:":  # REFERENCE…
                 item.reference.append(l)
-                item.number_ref += len(l[3:].split(' '))
+                item.number_ref += len(l[3:].split(" "))
                 type = Line.REFERENCE
-            elif l[0:2] == '#,':            # FLAG…
+            elif l[0:2] == "#,":  # FLAG…
                 item.flag.append(l)
                 type = Line.FLAG
-            elif l[0:10] == '#| msgid "':   # msgid PREVIOUS
+            elif l[0:10] == '#| msgid "':  # msgid PREVIOUS
                 item.pmsgid = l[10:-1]
                 type = Line.PMSGID
             elif l[0:4] == '#| "' and type == Line.PMSGID:
                 item.pmsgid += l[4:-1]
-                #type = Line.PMSGID
-            elif l[0:2] == "#~" and type == Line.BLANK:     # OBSOLETE
+                # type = Line.PMSGID
+            elif l[0:2] == "#~" and type == Line.BLANK:  # OBSOLETE
                 item.obsolete.append(l)
                 type = Line.OBSOLETE
-            elif l[0:2] == "#~" and type == Line.OBSOLETE:   # OBSOLETE
+            elif l[0:2] == "#~" and type == Line.OBSOLETE:  # OBSOLETE
                 item.obsolete.append(l)
-                #type = Line.OBSOLETE
-            elif l[0:1] == '#':             # TRANSLATOR-COMMENT
+                # type = Line.OBSOLETE
+            elif l[0:1] == "#":  # TRANSLATOR-COMMENT
                 item.comment.append(l)
                 type = Line.COMMENT
-            elif l[0:7] == 'msgid "':       # msgid STRING
+            elif l[0:7] == 'msgid "':  # msgid STRING
                 item.msgid = l[7:-1]
                 type = Line.MSGID
-            elif l[0:8] == 'msgstr "':      # msgstr STRING
+            elif l[0:8] == 'msgstr "':  # msgstr STRING
                 item.msgstr = l[8:-1]
                 type = Line.MSGSTR
             elif l[0:1] == '"' and type == Line.MSGID:
@@ -150,7 +153,7 @@ class PotData():
             elif l[0:1] == '"' and type == Line.MSGSTR:
                 item.msgstr += l[1:-1]
                 # type = Line.MSGSTR
-            else:                          # ILLEGAL
+            else:  # ILLEGAL
                 print("ERROR at {} parsing '{}' as {}".format(j, l, type))
                 exit
             print("I {}: {} '{}'".format(j, type, l))
@@ -163,21 +166,21 @@ class PotData():
         for item in self.items:
             if len(item.obsolete) == 0:
                 for l in item.comment:
-                    print(l, file=fp)
+                    print(l, file=file)
                 for l in item.extracted:
-                    print(l, file=fp)
+                    print(l, file=file)
                 for l in item.reference:
-                    print(l, file=fp)
+                    print(l, file=file)
                 for l in item.flag:
-                    print(l, file=fp)
-                if item.pmsgid != '':
-                    print('#| msgid "' + item.pmsgid + '"', file=fp)
-                print('msgid "' + item.msgid + '"', file=fp)
-                print('msgstr "' + item.msgstr + '"', file=fp)
+                    print(l, file=file)
+                if item.pmsgid != "":
+                    print('#| msgid "' + item.pmsgid + '"', file=file)
+                print('msgid "' + item.msgid + '"', file=file)
+                print('msgstr "' + item.msgstr + '"', file=file)
             else:
                 for l in item.obsolete:
-                    print(l, file=fp)
-            print("", file=fp)
+                    print(l, file=file)
+            print("", file=file)
         return
 
     def output_po(self, file=sys.stdout, wrap=True):
@@ -185,7 +188,13 @@ class PotData():
             with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as ftmp:
                 self.output_raw(file=ftmp)
                 ftmp.seek(0)
-                subprocess.run(["msgcat", "-"], stdin=ftmp, stdout=fp, stderr=sys.stderr, encoding="utf-8")
+                subprocess.run(
+                    ["msgcat", "-"],
+                    stdin=ftmp,
+                    stdout=fp,
+                    stderr=sys.stderr,
+                    encoding="utf-8",
+                )
         else:
             self.output_raw(file=file)
         return
@@ -195,7 +204,7 @@ class PotData():
         Clean msgstr if msgid is the same except for pattern matches
         """
         if pattern_extracted:
-            re_pattern_extracted =  re.compile(pattern_extracted)
+            re_pattern_extracted = re.compile(pattern_extracted)
         if pattern_msgid:
             re_pattern_msgid = re.compile(pattern_msgid)
         for item in self.items:
@@ -218,7 +227,7 @@ class PotData():
         Duplicate msgid as msgstr for pattern matches
         """
         if pattern_extracted:
-            re_pattern_extracted =  re.compile(pattern_extracted)
+            re_pattern_extracted = re.compile(pattern_extracted)
         if pattern_msgid:
             re_pattern_msgid = re.compile(pattern_msgid)
         for item in self.items:
@@ -233,39 +242,49 @@ class PotData():
         return
 
     def wdiff_msgid(self):
-        re_escape =  re.compile(r'(\{)(\+|-)|(-|\+)(\})')
+        re_escape = re.compile(r"(\{)(\+|-)|(-|\+)(\})")
         for item in self.items:
-            if item.pmsgid != "" and \
-                    item.pmsgid[0:12] != "{++}{--}(++}" and \
-                    item.pmsgid[-12:] != "{++}{--}(++}":
+            if (
+                item.pmsgid != ""
+                and item.pmsgid[0:12] != "{++}{--}(++}"
+                and item.pmsgid[-12:] != "{++}{--}(++}"
+            ):
                 wdiff = ""
                 # Protect any occurrence of {+ +} {- -} by adding {++} in each of them
-                item.pmsgid = re_escape.sub(r'\g<1>\g<3>{++}\g<2>\g<4>', item.pmsgid)
-                diff=difflib.SequenceMatcher(isjunk=None,a=item.pmsgid,b=item.msgid)
+                item.pmsgid = re_escape.sub(r"\g<1>\g<3>{++}\g<2>\g<4>", item.pmsgid)
+                diff = difflib.SequenceMatcher(isjunk=None, a=item.pmsgid, b=item.msgid)
                 for tag, i1, i2, j1, j2 in diff.get_opcodes():
                     if tag == "equal":
                         wdiff += item.pmsgid[i1:i2]
                     elif tag == "delete":
-                        wdiff += '{-' + item.pmsgid[i1:i2] + '-}'
+                        wdiff += "{-" + item.pmsgid[i1:i2] + "-}"
                     elif tag == "insert":
-                        wdiff += '{+' + item.msgid[j1:j2] + '+}'
+                        wdiff += "{+" + item.msgid[j1:j2] + "+}"
                     elif tag == "replace":
-                        wdiff += '{-' + item.pmsgid[i1:i2] + '-}{+' +item.msgid[j1:j2] + '+}'
+                        wdiff += (
+                            "{-"
+                            + item.pmsgid[i1:i2]
+                            + "-}{+"
+                            + item.msgid[j1:j2]
+                            + "+}"
+                        )
                 # {++}{--}(++}"s placed around the wdiff string are NOP for change.
                 # These are used as the indicator for wdiff content.
-                item.pmsgid = '{++}{--}(++}' + wdiff + '{++}{--}(++}'
+                item.pmsgid = "{++}{--}(++}" + wdiff + "{++}{--}(++}"
         return
 
     def previous_msgid(self):
-        re_added =  re.compile(r'(\{\+)(.*?)(\+\})')
-        re_deleted = re.compile(r'(\{-)(.*?)(-\})')
+        re_added = re.compile(r"(\{\+)(.*?)(\+\})")
+        re_deleted = re.compile(r"(\{-)(.*?)(-\})")
         for item in self.items:
-            if item.pmsgid != "" and \
-                    item.pmsgid[0:12] == '{++}{--}(++}' and \
-                    item.pmsgid[-12:] == '{++}{--}(++}':
+            if (
+                item.pmsgid != ""
+                and item.pmsgid[0:12] == "{++}{--}(++}"
+                and item.pmsgid[-12:] == "{++}{--}(++}"
+            ):
                 previous = item.pmsgid[12:-12]
-                previous = re_added.sub("", previous)           # Drop {+...+}
-                previous = re_deleted.sub(r'\g<2>', previous)   # Keep ... of  {-...-}
+                previous = re_added.sub("", previous)  # Drop {+...+}
+                previous = re_deleted.sub(r"\g<2>", previous)  # Keep ... of  {-...-}
                 item.pmsgid = previous
         return
 
@@ -277,9 +296,15 @@ class PotData():
                 item.pmsgid = ""
                 item.unfuzzy()
 
-    def normalize(self, keep_last_extracted=True, drop_comment=True, \
-            drop_reference=True,  drop_flag=True, \
-            drop_pmsgid=True, drop_obsolete=True):
+    def normalize(
+        self,
+        keep_last_extracted=True,
+        drop_comment=True,
+        drop_reference=True,
+        drop_flag=True,
+        drop_pmsgid=True,
+        drop_obsolete=True,
+    ):
         for item in self.items:
             if drop_comment:
                 item.comment = []
@@ -292,9 +317,13 @@ class PotData():
             if drop_obsolete:
                 item.obsolete = []
             if len(item.extracted) > 1:
-                print("len(extracted)={} for msgid={}".format(len(item.extracted), item.msgid))
+                print(
+                    "len(extracted)={} for msgid={}".format(
+                        len(item.extracted), item.msgid
+                    )
+                )
             if len(item.extracted) == 0:
-                item.extracted = [ '#.' ]
+                item.extracted = ["#."]
             else:
                 if keep_last_extracted:
                     item.extracted = [item.extracted[-1]]
@@ -304,19 +333,28 @@ class PotData():
             n = len(self.items)
             for i in range(n):
                 j = n - 1 - i
-                if self.items[j].msgid == '' and self.items[j].msgstr == '' and len(self.items[j].obsolete) == 0:
-                    del (self.items[j])
+                if (
+                    self.items[j].msgid == ""
+                    and self.items[j].msgstr == ""
+                    and len(self.items[j].obsolete) == 0
+                ):
+                    del self.items[j]
 
     def normalize_extracted(self, keep_last_extracted=True):
-        self.normalize(keep_last_extracted=keep_last_extracted, \
-                drop_comment=False, \
-                drop_reference=False,  drop_flag=False, \
-                drop_pmsgid=False, drop_obsolete=False)
+        self.normalize(
+            keep_last_extracted=keep_last_extracted,
+            drop_comment=False,
+            drop_reference=False,
+            drop_flag=False,
+            drop_pmsgid=False,
+            drop_obsolete=False,
+        )
         return
 
     def combine_pots(self, translation, force=False):
         if len(self.items) > len(translation.items):
-            print("""\
+            print(
+                """\
 E: *** master: {} > translation: {} ***
 
    Different strings (msgid) in master may be translated into
@@ -329,9 +367,13 @@ E: *** master: {} > translation: {} ***
    typographical differences in master are merged into
    a same translated string in translation.
 
-""".format(len(self.items), len(translation.items)))
+""".format(
+                    len(self.items), len(translation.items)
+                )
+            )
         if len(self.items) < len(translation.items):
-            print("""\
+            print(
+                """\
 E: *** master: {} < translation: {} ***
 
    A same string (msgid) in master may be translated into
@@ -342,7 +384,10 @@ E: *** master: {} < translation: {} ***
 
    This should be rare case.
 
-""".format(len(self.items), len(translation.items)))
+""".format(
+                    len(self.items), len(translation.items)
+                )
+            )
         num_warn_extracted = 0
         num_warn_ref = 0
         j = 0
@@ -357,7 +402,11 @@ E: *** master: {} < translation: {} ***
                 # normal part
                 if item.number_ref != translation.items[j].number_ref:
                     num_warn_ref += 1
-                    item.reference.append("#: XXX mismatched references: {} --> {}".format(item.number_ref, translation.items[j].number_ref))
+                    item.reference.append(
+                        "#: XXX mismatched references: {} --> {}".format(
+                            item.number_ref, translation.items[j].number_ref
+                        )
+                    )
                     item.reference.extend(translation.items[j].reference)
                 if item.extracted[0] != translation.items[j].extracted[0]:
                     num_warn_extracted += 1
@@ -370,19 +419,22 @@ E: *** master: {} < translation: {} ***
                     item.msgstr = translation.items[j].msgid
                     j += 1
         if num_warn_extracted > 0:
-            print("E: *** mismatched extracted tag pattern: {}".format(num_warn_extracted))
+            print(
+                "E: *** mismatched extracted tag pattern: {}".format(num_warn_extracted)
+            )
         if num_warn_ref > 0:
             print("E: *** mismatched references: {}".format(num_warn_ref))
         return
 
+
 #######################################################################
 # This program functions differently if called via symlink
 #######################################################################
-if __name__ == '__main__':
+if __name__ == "__main__":
     pots = PotData()
     with open("de.po") as fp:
         pots.read_po(file=fp)
-    for i in range(0,5):
+    for i in range(0, 5):
         item = PotItem()
         item.msgid = "FOO ID xxxxxx xxxxxxxxxxxxxxxxxx {}".format(i)
         item.msgstr = "FOO STR zzzzzzzzzzzzzzzzzzzzzzz {}".format(i)

@@ -23,24 +23,28 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 import argparse
-import os       # for os.path.basename etc. 
-import sys      # sys.stderr etc.
+import os  # for os.path.basename etc.
+import sys  # sys.stderr etc.
 import shutil
+
 # To test this in place, setup a symlink with "ln -sf . poutils"
 import poutils
+
 #######################################################################
 # main program
 #######################################################################
 def po_wdiff():
-    name = 'po_wdiff'
+    name = "po_wdiff"
     p = argparse.ArgumentParser(
-            formatter_class=argparse.RawDescriptionHelpFormatter,
-            description = '''\
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="""\
 {0}: Add wdiff data to previous                             Version: {1}
 
 {2}
-'''.format(name, poutils.version, poutils.copyright),
-            epilog='''\
+""".format(
+            name, poutils.version, poutils.copyright
+        ),
+        epilog="""\
 If you enables "--previous" option for "msgmerge", and upstream text
 changes, corresponding entry in the updated po file looks like:
 
@@ -54,13 +58,15 @@ msgstr "old translated text"
 Sometimes, it's not easy to see what is the change.  This convert
 the "#| msgid" line into wdiff.  You can revert this conversion
 using the "po_previous" command.
-''')
+""",
+    )
     p.add_argument(
-            '-k',
-            '--keep',
-            action = 'store_true',
-            default = False,
-            help = 'keep original file as *.orig')
+        "-k",
+        "--keep",
+        action="store_true",
+        default=False,
+        help="keep original file as *.orig",
+    )
     p.add_argument("po", help="PO file")
     args = p.parse_args()
     master = poutils.PotData()
@@ -73,8 +79,9 @@ using the "po_previous" command.
         master.output_po(file=fp)
     return
 
+
 #######################################################################
 # This program functions differently if called via symlink
 #######################################################################
-if __name__ == '__main__':
+if __name__ == "__main__":
     po_wdiff()
