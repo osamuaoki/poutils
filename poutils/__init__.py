@@ -191,7 +191,7 @@ class PotData:
                 subprocess.run(
                     ["msgcat", "-"],
                     stdin=ftmp,
-                    stdout=fp,
+                    stdout=file,
                     stderr=sys.stderr,
                     encoding="utf-8",
                 )
