@@ -92,7 +92,7 @@ to the new ones.  We need a reverse workflow to generate the PO data from the
 master data and the corresponding translated data for any gettext derivative
 infrastructure.
 
-This po_combine provides a reverse workflow as follows:
+This po_combine provides a generic reverse workflow as follows:
 
     master data ------> POT --+
                               +--[po_combine] --> PO
@@ -107,26 +107,40 @@ This po_combine provides a reverse workflow as follows:
 * the PO data generator po_combine creates the converted PO data from the
   master POT data and translated POT data.
 
-The align and match task is optional.  If your PO system have files such as
-add_*/ data, disabling such functionality will ensure matched source data to
-avoid this task.
+When the master and translated data doesn't use PO system and you want to
+migrate to PO based source structure, po_combine is a great help.  I find the
+requirement to align and match the master data and the translated data in their
+original format is more trouble than doing it on the POT data.  This is very
+true when the translated data is based on older master data with many mussing
+paragraphs.  For such cases, I see some advantage of po_combine over native PO
+generation mechanism such as po4a-gettextize with -l option for po4a.
 
 You can add some extracted markers such as untranslated strings (numbers,
 embedded XML tags, ...) to the comment section of POT file before manually edit
 them for alignment. This kind of marker strings and the original POT markers
-such as "#. type: Content of: <book><chapter><title>" should make the align
-and match task easier with this po_combine workflow.
+such as "#. type: Content of: <book><chapter><title>" should make the align and
+match task easier with this po_combine workflow.  (TODO: In future, adding
+consecutive extraction index number instead of just source line position may be
+added to help this process.)
 
-For po4a, po4a-gettextize with -l option facilitates this functionality.
-(Also, for poxml, split2po facilitates this functionality.) I find the
-requirement to align and match the master data and the translated data in their
-original format is more trouble than doing it on the POT data.  This is very
-true when the translated data is based on older master data with many mussing
-paragraphs.  For such cases, I see some advantage of po_combine over
-po4a-gettextize even for po4a.  But po_combine has some negatives when multiple
-similar original strings are translated into the same string causing wrong
-alignment.  If the master and translated data match, using the native tool such
-as po4a-gettextize with -l option is the better choice.  YMMV.
+When you are migrating from an old data format to a new data format with some
+conversion program, po_combine can help you to create updated PO file
+corresponding to the new translated data with its generic workflow.  The
+alignment in the old data format is an optional task if you take this path.
+But the better alignment in the old data format reduces the manual alignment
+work on the new data format.  For the better alignment in the old format,
+disabling features such as ones provided by the add_.../ files or any other
+ways to insert translator credits or similar in the old source ensures better
+matched old source data.
+
+When multiple similar original strings are translated into a same translated
+string, even the perfectly aligned new original and translated data can't be
+handled well by po_combine.  If the number of extracted strings for the
+translation is less than the original for seemingly perfectly aligned data,
+this is probably the reason.  Then the use of native PO generation mechanism
+such as po4a-gettextize with -l option for po4a may have some advantage over
+the use of po_combine.  (Also, for poxml, split2po facilitates this
+functionality.)  You need to un-fuzzy resulting PO.
 
 TIP: pandoc is a nice document data format conversion tool.
 
