@@ -43,67 +43,22 @@ class deb(distclean):
         elif not os.path.isfile("debian/changelog"):
             print("E: Missing debian/changelog", file=sys.stderr)
             exit(1)
-        else:
-            with open("debian/changelog", mode="r", encoding="utf-8") as f:
-                line = f.readline()
+        with open("debian/changelog", mode="r", encoding="utf-8") as f:
+            line = f.readline()
             pkgver = re.match("([^ \t]+)[ \t]+\(([^()]+)-([^-()]+)\)", line)
             if pkgver:
                 package = pkgver.group(1).lower()
                 version = pkgver.group(2)
                 revision = pkgver.group(3)
-            else:
-                print('E: changelog start with "{}"'.format(line), file=sys.stderr)
-                exit(1)
-        if poutils.version != version:
-            print(
-                'E: Update version in poutils/__init__.py to "{}"'.format(version),
-                file=sys.stderr,
-            )
-            exit(1)
-        parent_path = os.path.dirname(os.path.abspath(__file__))
-        parent = os.path.basename(parent_path)
-        if parent != package and parent[: len(package) + 1] == package + "-":
-            pint(
-                "E: Git repo directory can't use versioned name directory",
-                file=sys.stderr,
-            )
-            exit(1)
-        # remove existing source_tree
-        source = package + "-" + version
-        tarball = package + "_" + version + ".orig.tar.xz"
-        source_path = parent_path + "/" + source
-        if os.path.exists(source_path):
-            shutil.rmtree(source_path)
-        # move to parent directory
-        # copy from parent to source using hardlinks excluding .git
-        os.chdir("..")
         command = (
-            "rsync -av --exclude=.git --link-dest='"
-            + parent_path
-            + "' '"
-            + parent
-            + "/.' '"
-            + source
-            + "'"
+            "git deborig -f HEAD; pdebuild; sudo dpkg -i ../{}_{}-{}_all.deb".format(
+                package, version, revision
+            )
         )
         print("I: $ {}".format(command), file=sys.stderr)
         if subprocess.call(command, shell=True) != 0:
-            print("E: rsync -av failed.", file=sys.stderr)
+            print("E: build failed.", file=sys.stderr)
             exit(1)
-        # tar while excluding debian directories
-        command = "tar --exclude='" + source + "/debian' --anchored --xz -cvf "
-        command += tarball + " " + source
-        print("I: $ {}".format(command), file=sys.stderr)
-        if subprocess.call(command, shell=True) != 0:
-            print("E: tar failed {}.".format(tarball), file=sys.stderr)
-            exit(1)
-        print("I: {} tarball made".format(tarball), file=sys.stderr)
-        os.chdir(source)
-        print(
-            "I: please run pdebuild/debuild in {}".format("../" + source),
-            file=sys.stderr,
-        )
-        print("I: please run gbp import-dsc ../*.dsc", file=sys.stderr)
 
 
 with open("README.md", "r") as fh:
@@ -111,7 +66,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="poutils",
-    version="0.0.1",
+    version="0.2",
     author="Osamu Aoki",
     author_email="osamu@debian.org",
     description="Utility for PO file",
@@ -130,8 +85,10 @@ setuptools.setup(
     ],
     entry_points={
         "console_scripts": [
+            "po_align=poutils.po_align:po_align",
             "po_combine=poutils.po_combine:po_combine",
             "po_clean=poutils.po_clean:po_clean",
+            "po_unfuzzy=poutils.po_unfuzzy:po_unfuzzy",
             "po_update=poutils.po_update:po_update",
             "po_wdiff=poutils.po_wdiff:po_wdiff",
             "po_previous=poutils.po_previous:po_previous",

@@ -66,9 +66,11 @@ class Line(enum.Enum):
 
 class PotItem:
     def __init__(self):
+        self.syncid = -1
         self.comment = []
         self.extracted = []
         self.reference = []
+        self.index = []
         self.number_ref = 0
         self.flag = []
         self.pmsgid = ""
@@ -93,25 +95,51 @@ class PotItem:
             if self.flag[j] == "#, ":
                 del self.flag[j]
 
+    reindex = re.compile(r"[^:]*:")
+
+    def set_index(self):
+        # parse po4a-gettextize '#: ' lead reference lines
+        refs = []
+        for l in self.reference:
+            refs.extend(l[3:].split(" "))
+        if refs == []:
+            self.index.append(-1)
+        else:
+            for r in refs:
+                self.index.append(int(self.reindex.sub("", r)))
+
+    def set_syncid(self, sid):
+        self.syncid = sid
+
 
 class PotData:
     def __init__(self):
         self.items = []
         return
 
+    def __getitem__(self, i):
+        return self.items[i]
+
+    def __iter__(self):
+        yield from self.items
+
+    def __len__(self):
+        return len(self.items)
+
     def append(self, item):
         self.items.append(item)
         return
 
-    def read_po(self, file=sys.stdin):
+    def read_po(self, file=sys.stdin, verbose=False):
         item = PotItem()
         j = 0  # line counter
         type = Line.INITIAL  # BEGIN OF FILE
         for l in file:
             l = l.rstrip()  # tailing whitespaces (SP, CR. LF)
             if l == "" and type == Line.BLANK:  # WHITE-SPACE
-                pass  # consecutive Line.BLANK
+                # consecutive Line.BLANK
                 # type = Line.BLANK
+                pass
             elif l == "" and type != Line.INITIAL:  # WHITE-SPACE
                 self.items.append(item)
                 item = PotItem()
@@ -156,15 +184,30 @@ class PotData:
             else:  # ILLEGAL
                 print("ERROR at {} parsing '{}' as {}".format(j, l, type))
                 exit
-            print("I {}: {} '{}'".format(j, type, l))
+            if verbose:
+                print("I {}: {} '{}'".format(j, type, l))
             j += 1
         if type != Line.BLANK:
             self.items.append(item)
         return
 
+    def set_all_index(self):
+        for item in self.items:
+            item.set_index()
+
+    def set_all_syncid(self):
+        for sid, item in enumerate(self.items):
+            item.set_syncid(sid)
+
     def output_raw(self, file=sys.stdout):
         for item in self.items:
             if len(item.obsolete) == 0:
+                if item.syncid >= 0:
+                    print("# SYNC1: {:0>8}".format(item.syncid), file=file)
+                    print("# SYNC2: {:0>8}".format(item.syncid), file=file)
+                    print("# SYNC3: {:0>8}".format(item.syncid), file=file)
+                    print("# SYNC4: {:0>8}".format(item.syncid), file=file)
+                    print("# SYNC5: {:0>8}".format(item.syncid), file=file)
                 for l in item.comment:
                     print(l, file=file)
                 for l in item.extracted:
@@ -183,23 +226,31 @@ class PotData:
             print("", file=file)
         return
 
-    def output_po(self, file=sys.stdout, wrap=True):
-        if wrap:
+    def output_po(self, file=sys.stdout, aligned=False):
+        if aligned:
+            self.output_raw(file=file)
+        else:
             with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as ftmp:
                 self.output_raw(file=ftmp)
                 ftmp.seek(0)
                 subprocess.run(
-                    ["msgcat", "-"],
+                    ["msguniq", "--use-first", "-"],
                     stdin=ftmp,
                     stdout=file,
                     stderr=sys.stderr,
                     encoding="utf-8",
                 )
-        else:
-            self.output_raw(file=file)
         return
 
-    def clean_msgstr(self, pattern_extracted=None, pattern_msgid=None):
+    def unfuzzy_all(self):
+        """
+        Unfuzzy all PO contents
+        """
+        for item in self.items:
+            item.unfuzzy()
+        return
+
+    def clean_msgstr(self, pattern_extracted=None, pattern_msgid=None, unfuzzy=True):
         """
         Clean msgstr if msgid is the same except for pattern matches
         """
@@ -215,17 +266,24 @@ class PotData:
                     for l in item.extracted:
                         if re_pattern_extracted.search(l):
                             break
-                    else:
+                    else:  # pattern_extracted not found
                         item.msgstr = ""
-                        continue
+                    if unfuzzy:
+                        item.unfuzzy()
                 else:
                     item.msgstr = ""
+                    if unfuzzy:
+                        item.unfuzzy()
+            else:
+                pass
         return
 
     def dup_msgstr(self, pattern_extracted=None, pattern_msgid=None, unfuzzy=True):
         """
         Duplicate msgid as msgstr for pattern matches
         """
+        # No pre-made command provided.
+        # Call from your custom command to add duplicate msgstr to matched items
         if pattern_extracted:
             re_pattern_extracted = re.compile(pattern_extracted)
         if pattern_msgid:
@@ -233,12 +291,16 @@ class PotData:
         for item in self.items:
             if pattern_msgid and re_pattern_msgid.search(item.msgid):
                 item.msgstr = item.msgid
-                item.unfuzzy()
+                if unfuzzy:
+                    item.unfuzzy()
             elif pattern_extracted:
                 for l in item.extracted:
                     if re_pattern_extracted.search(l):
                         item.msgstr = item.msgid
-                        item.unfuzzy()
+                        if unfuzzy:
+                            item.unfuzzy()
+            else:
+                pass
         return
 
     def wdiff_msgid(self):
@@ -351,7 +413,7 @@ class PotData:
         )
         return
 
-    def combine_pots(self, translation, force=False):
+    def combine_pots(self, translation):
         if len(self.items) > len(translation.items):
             print(
                 """\
@@ -360,12 +422,14 @@ E: *** master: {} > translation: {} ***
    Different strings (msgid) in master may be translated into
    a same string (msgstr) in translation.
 
-   Drop problematic entity in master or add duplicate entity in
-   translation to align master and translation data.
-
    This often happens when capitalization or any trivial
    typographical differences in master are merged into
    a same translated string in translation.
+
+   Use po_align to ensure easier matching (for po4a).
+
+   Also, if the translation misses some tags such as
+   <_:footnote-1/>, then alignment becomes broken.
 
 """.format(
                     len(self.items), len(translation.items)
@@ -378,11 +442,6 @@ E: *** master: {} < translation: {} ***
 
    A same string (msgid) in master may be translated into
    different strings (msgstr) in translation.
-
-   Drop problematic entity in translation and unify translation
-   differences.
-
-   This should be rare case.
 
 """.format(
                     len(self.items), len(translation.items)
@@ -403,27 +462,23 @@ E: *** master: {} < translation: {} ***
                 if item.number_ref != translation.items[j].number_ref:
                     num_warn_ref += 1
                     item.reference.append(
-                        "#: XXX mismatched references: {} --> {}".format(
+                        "# WARN: mismatched references: {} --> {}".format(
                             item.number_ref, translation.items[j].number_ref
                         )
                     )
                     item.reference.extend(translation.items[j].reference)
                 if item.extracted[0] != translation.items[j].extracted[0]:
                     num_warn_extracted += 1
-                    item.extracted.append("#. XXX mismatched extracted tag pattern")
+                    item.extracted.append("# WARN: mismatched extracted tag pattern")
                     item.extracted.extend(translation.items[j].extracted)
-                    if force:
-                        item.msgstr = translation.items[j].msgid
-                        j += 1
-                else:
-                    item.msgstr = translation.items[j].msgid
-                    j += 1
+                item.msgstr = translation.items[j].msgid
+                j += 1
         if num_warn_extracted > 0:
             print(
-                "E: *** mismatched extracted tag pattern: {}".format(num_warn_extracted)
+                "W: *** mismatched extracted tag pattern: {}".format(num_warn_extracted)
             )
         if num_warn_ref > 0:
-            print("E: *** mismatched references: {}".format(num_warn_ref))
+            print("W: *** mismatched references: {}".format(num_warn_ref))
         return
 
 

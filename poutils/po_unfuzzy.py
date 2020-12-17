@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # vim:se tw=0 sts=4 ts=4 et ai:
 """
-Copyright © 2018 Osamu Aoki
+Copyright © 2020 Osamu Aoki
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the
@@ -33,12 +33,12 @@ import poutils
 #######################################################################
 # main program
 #######################################################################
-def po_clean():
-    name = "po_clean"
+def po_unfuzzy():
+    name = "po_unfuzzy"
     p = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="""\
-{0}: make a PO file clean by removing identical ones as msgid  Version: {1}
+{0}: unfuzzy a PO file by removing the fuzzy flag  Version: {1}
 
 {2}
 """.format(
@@ -46,22 +46,13 @@ def po_clean():
         ),
         epilog="See {}(1) manpage for more.".format(name),
     )
-    p.add_argument(
-        "-f",
-        "--fuzzy",
-        action="store_false",
-        default=True,
-        help="keep all fuzzy markers",
-    )
     p.add_argument("po", help="PO file")
     args = p.parse_args()
     master = poutils.PotData()
     with open(args.po, "r") as fp:
         master.read_po(file=fp)
-    master.clean_msgstr(
-        pattern_extracted=r"<screen>", pattern_msgid=r"^https?://", unfuzzy=args.fuzzy
-    )
-    with open(args.po + ".cleaned", "w") as fp:
+    master.unfuzzy_all()
+    with open(args.po + ".unfuzzied", "w") as fp:
         master.output_po(file=fp)
     return
 
@@ -70,4 +61,4 @@ def po_clean():
 # This program functions differently if called via symlink
 #######################################################################
 if __name__ == "__main__":
-    po_clean()
+    po_unfuzzy()

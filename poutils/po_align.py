@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # vim:se tw=0 sts=4 ts=4 et ai:
 """
-Copyright © 2018 Osamu Aoki
+Copyright © 2020 Osamu Aoki
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the
@@ -23,9 +23,10 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 import argparse
+import os  # for os.path.basename etc.
 import sys  # sys.stderr etc.
 import shutil
-import os  # for os.path.basename etc.
+import copy
 
 # To test this in place, setup a symlink with "ln -sf . poutils"
 import poutils
@@ -33,12 +34,12 @@ import poutils
 #######################################################################
 # main program
 #######################################################################
-def po_clean():
-    name = "po_clean"
+def po_align():
+    name = "po_align"
     p = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="""\
-{0}: make a PO file clean by removing identical ones as msgid  Version: {1}
+{0}: align PO file contents according to the original file location            Version: {1}
 
 {2}
 """.format(
@@ -46,23 +47,24 @@ def po_clean():
         ),
         epilog="See {}(1) manpage for more.".format(name),
     )
-    p.add_argument(
-        "-f",
-        "--fuzzy",
-        action="store_false",
-        default=True,
-        help="keep all fuzzy markers",
-    )
     p.add_argument("po", help="PO file")
     args = p.parse_args()
     master = poutils.PotData()
     with open(args.po, "r") as fp:
         master.read_po(file=fp)
-    master.clean_msgstr(
-        pattern_extracted=r"<screen>", pattern_msgid=r"^https?://", unfuzzy=args.fuzzy
-    )
-    with open(args.po + ".cleaned", "w") as fp:
-        master.output_po(file=fp)
+    master.set_all_index()
+    index_map = []
+    for j, item in enumerate(master):
+        for i in item.index:
+            index_map.append((i, j))
+    index_map.sort()
+    aligned = poutils.PotData()
+    for i, j in index_map:
+        aligned.append(copy.copy(master[j]))
+    aligned.set_all_syncid()
+    with open(args.po + ".aligned", "w") as fp:
+        # Never use msguniq here
+        aligned.output_raw(file=fp)
     return
 
 
@@ -70,4 +72,4 @@ def po_clean():
 # This program functions differently if called via symlink
 #######################################################################
 if __name__ == "__main__":
-    po_clean()
+    po_align()

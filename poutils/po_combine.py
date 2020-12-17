@@ -94,9 +94,9 @@ infrastructure.
 
 This po_combine provides a generic reverse workflow as follows:
 
-    master data ------> POT --+
-                              +--[po_combine] --> PO
-    translated data --> POT --+
+    master data ------> POT --> [po_align] --+
+                                             +--[po_combine] --> PO
+    translated data --> POT --> [po_align] --+
 
 * the POT extractor of each tool infrastructure creates the master POT data by
   placing the converted master data in the normal master data position.
@@ -104,7 +104,8 @@ This po_combine provides a generic reverse workflow as follows:
   by placing the converted translated data in the normal master data position.
 * Manually edit the converted master POT data and translated POT data to align
   and match exactly.
-* the PO data generator po_combine creates the converted PO data from the
+* The optional po_align may help debug POT alignment issues.
+* The PO data generator po_combine creates the converted PO data from the
   master POT data and translated POT data.
 
 When the master and translated data doesn't use PO system and you want to
@@ -119,9 +120,7 @@ You can add some extracted markers such as untranslated strings (numbers,
 embedded XML tags, ...) to the comment section of POT file before manually edit
 them for alignment. This kind of marker strings and the original POT markers
 such as "#. type: Content of: <book><chapter><title>" should make the align and
-match task easier with this po_combine workflow.  (TODO: In future, adding
-consecutive extraction index number instead of just source line position may be
-added to help this process.)
+match task easier with this po_combine workflow.  (po_align works for this.)
 
 When you are migrating from an old data format to a new data format with some
 conversion program, po_combine can help you to create updated PO file
@@ -133,14 +132,24 @@ disabling features such as ones provided by the add_.../ files or any other
 ways to insert translator credits or similar in the old source ensures better
 matched old source data.
 
-When multiple similar original strings are translated into a same translated
-string, even the perfectly aligned new original and translated data can't be
-handled well by po_combine.  If the number of extracted strings for the
-translation is less than the original for seemingly perfectly aligned data,
-this is probably the reason.  Then the use of native PO generation mechanism
-such as po4a-gettextize with -l option for po4a may have some advantage over
-the use of po_combine.  (Also, for poxml, split2po facilitates this
-functionality.)  You need to un-fuzzy resulting PO.
+Different strings (msgid) in master may be translated into a same string
+(msgstr) in translation.  This often happens when capitalization or any trivial
+typographical differences in master are merged into a same translated string in
+translation.  This causes problem for po_combine to function well.  If the
+number of extracted strings for the translation is less than the original for
+seemingly perfectly aligned data, this is probably the reason.
+
+Also, if the translation misses some tags such as <_:footnote-1/>, then
+alignment becomes broken and very hard to identify.
+
+Use po_align to ensure easier matching (for po4a) and smooth operation of
+po_combine.  It is easier to debug source issues with po_align + po_combine.
+
+When you have perfectly aligned data, the use of the native PO generation
+mechanism such as po4a-gettextize with -l option for po4a may have advantage
+over the use of po_combine.  (Also, for poxml, split2po facilitates this
+functionality.)  You may need to clean and unfuzzy resulting PO using po_clean
+and po_unfazzy for this native approach.
 
 TIP: pandoc is a nice document data format conversion tool.
 
@@ -150,7 +159,14 @@ See {}(1) manpage for more.
         ),
     )
     p.add_argument(
-        "-f", "--force", action="store_true", default=False, help="force to combine"
+        "-a",
+        "--aligned",
+        action="store_true",
+        default=False,
+        help="generate aligned but duplicated content for debug",
+    )
+    p.add_argument(
+        "-v", "--verbose", action="store_true", default=False, help="verbose output"
     )
     p.add_argument("master_pot", help="POT file from the English source")
     p.add_argument("translated_pot", help="POT file from the translated source")
@@ -159,15 +175,15 @@ See {}(1) manpage for more.
     master = poutils.PotData()
     translation = poutils.PotData()
     with open(args.master_pot, "r") as fp_master_pot:
-        master.read_po(file=fp_master_pot)
+        master.read_po(file=fp_master_pot, verbose=args.verbose)
         with open(args.translated_pot, "r") as fp_translated_pot:
             translation.read_po(file=fp_translated_pot)
     master.normalize()
     translation.normalize()
-    master.combine_pots(translation, force=args.force)
+    master.combine_pots(translation)
     master.clean_msgstr(pattern_extracted=r"<screen>", pattern_msgid=r"^https?://")
     with open(args.output, "w") as fp_output:
-        master.output_po(file=fp_output)
+        master.output_po(file=fp_output, aligned=args.aligned)
     return
 
 

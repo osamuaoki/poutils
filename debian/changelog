@@ -1,6 +1,8 @@
 poutils (0.2-1) unstable; urgency=medium
 
   * Refine po_combine
+  * Add po_align
+  * Add po_unfuzzy
 
  -- Osamu Aoki <osamu@debian.org>  Tue, 15 Dec 2020 11:34:55 +0900
 
