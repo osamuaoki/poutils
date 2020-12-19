@@ -38,4 +38,21 @@ GUI/CUI PO editor helper tools: (previous related)
     $ pdebuild
 
 or
+
     $ ./setup.py deb
+
+## TODO
+
+### PO proofing (po_checkxml)
+
+* XML compliance within msgid/msgstr
+
+    * <XXX> ... </XXX> matching
+    * <XXX> ... </XXX> range overlap
+    * <XXX > or <XXX /> or </XXX> only for <
+
+* XML tag number matching between msgid/msgstr (if msgstr != "")
+
+    * number of <XXX> matches
+    * number of <XXX /> matches
+
