@@ -47,12 +47,13 @@ or
 
 * XML compliance within msgid/msgstr
 
-    * <XXX> ... </XXX> matching
-    * <XXX> ... </XXX> range overlap
-    * <XXX > or <XXX /> or </XXX> only for <
+    * `<XXX> ... </XXX>` matching
+    * `<XXX> ... </XXX>` range overlap
+    * `<XXX > or <XXX />` or `</XXX>` only for `<`
 
-* XML tag number matching between msgid/msgstr (if msgstr != "")
+* XML tag number matching between msgid/msgstr (if `msgstr != ""`)
 
-    * number of <XXX> matches
-    * number of <XXX /> matches
+    * match the number of `<XXX>`
+    * match the number of `</XXX>`
+    * match the number of `<XXX />`
 
