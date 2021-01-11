@@ -4,12 +4,12 @@
 
 Osamu Aoki <osamu@debian.org>
 
-This `poutils` provides generic helper programs and utility class to play with
-PO files:
+This`poutils` provides generic helper programs and utility class to play with
+PO files: https://github.com/osamuaoki/poutils
 
 Reverse i18n workflow tools:
 
-* `po_align`: Align msgstr and msgid pairs to the oroginal file location
+* `po_align`: Align msgstr and msgid pairs to the original file location
   with duplicate entries.  -- align PO sequence before po_combine
 * `po_combine`: generate a PO file from POT files from the master
   and translation data. --  reverse i18n workflow.  see "po_combine -h"
