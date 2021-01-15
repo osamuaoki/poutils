@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # vim:se tw=0 sts=4 ts=4 et ai:
 """
-Copyright © 2020 Osamu Aoki
+Copyright © 2018 Osamu Aoki
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the
@@ -33,12 +33,12 @@ import poutils
 #######################################################################
 # main program
 #######################################################################
-def po_unfuzzy():
-    name = "po_unfuzzy"
+def po_check():
+    name = "po_check"
     p = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="""\
-{0}: unfuzzy a PO file by removing the fuzzy flag  Version: {1}
+{0}: check matching between msgid and msgstr in a PO file  Version: {1}
 
 {2}
 """.format(
@@ -46,19 +46,38 @@ def po_unfuzzy():
         ),
         epilog="See {}(1) manpage for more.".format(name),
     )
-    p.add_argument("po", help="PO file")
+    p.add_argument(
+        "-f",
+        "--force_check",
+        action="store_true",
+        default=False,
+        help="force to check msgstr even for the fuzzy msgstr",
+    )
+    p.add_argument(
+        "-i",
+        "--itstool",
+        action="store_true",
+        default=False,
+        help="filter for itstool generated PO file",
+    )
+    p.add_argument(
+        "-r",
+        "--raw",
+        action="store_true",
+        default=False,
+        help="raw output without msguniq",
+    )
+    p.add_argument("po", help="Input PO file name.  Output PO file suffix: .checked")
     args = p.parse_args()
     master = poutils.PotData()
     with open(args.po, "r") as fp:
         master.read_po(file=fp)
-    master.unfuzzy_all()
-    with open(args.po + ".unfuzzied", "w") as fp:
-        master.output_po(file=fp)
+    master.check_xml(force_check=args.force_check, itstool=args.itstool)
+    with open(args.po + ".checked", "w") as fp:
+        master.output_po(file=fp, raw=args.raw)
     return
 
 
 #######################################################################
-# This program functions differently if called via symlink
-#######################################################################
 if __name__ == "__main__":
-    po_unfuzzy()
+    po_check()

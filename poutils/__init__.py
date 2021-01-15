@@ -25,16 +25,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 This scripts work on PO/POT file having a repeat of the following structure
 
      WHITE-SPACE | BOF
-     #  TRANSLATOR-COMMENTS
-     #. EXTRACTED-COMMENTS
-     #: REFERENCE…
-     #, FLAG…
-     #| msgid PREVIOUS-UNTRANSLATED-STRING
+   ? #  TRANSLATOR-COMMENTS
+   ? #. EXTRACTED-COMMENTS
+   ? #: REFERENCE…
+   ? #, FLAG…
+   ? #| msgid PREVIOUS-UNTRANSLATED-STRING
+   ? msgctxt "_"
      msgid UNTRANSLATED-STRING
      msgstr TRANSLATED-STRING
-     #~ obsolete data
-     WHITE-SPACE
-     WHITE-SPACE | EOF
+   ? #~ obsolete data
+   ? WHITE-SPACE
+   ? WHITE-SPACE | EOF
 """
 import enum
 import sys  # sys.stderr etc.
@@ -42,12 +43,16 @@ import re  # for non-greedy {-...-} and {+...+} handling
 import tempfile  # for temporary file
 import subprocess  # for shell pipe
 import difflib  # for wdiff
+import xml.etree.ElementTree as ET
+import itertools as IT
+import io
+import codecs
 
 #######################################################################
 # Basic constants
 #######################################################################
-version = "0.2"
-copyright = "Copyright © 2018 -2020 Osamu Aoki <osamu@debian.org>"
+version = "0.3"
+copyright = "Copyright © 2018 -2021 Osamu Aoki <osamu@debian.org>"
 #######################################################################
 # Basic Class to handle POT/PO data
 #######################################################################
@@ -58,6 +63,7 @@ class Line(enum.Enum):
     REFERENCE = enum.auto()
     FLAG = enum.auto()
     PMSGID = enum.auto()
+    MSGCTXT = enum.auto()
     MSGID = enum.auto()
     MSGSTR = enum.auto()
     BLANK = enum.auto()
@@ -74,6 +80,7 @@ class PotItem:
         self.number_ref = 0
         self.flag = []
         self.pmsgid = ""
+        self.msgctxt = ""
         self.msgid = ""
         self.msgstr = ""
         self.obsolete = []
@@ -85,15 +92,32 @@ class PotItem:
         r"(?P<head>^#,\s*(?:.*,\s*)?)(?P<fuzzy>fuzzy(?:,\s*)?)(?P<tail>.*$)"
     )
 
-    def unfuzzy(self):
+    def is_fuzzy(self):
+        flag = False
+        for l in self.flag:
+            if self.refuz.search(l):
+                flag = True
+                break
+        return flag
+
+    def rm_fuzzy(self):
         for i, l in enumerate(self.flag):
             if self.refuz.search(l):
                 self.flag[i] = self.refuz.sub(r"#, \g<head>\g<tail>", l)
         n = len(self.flag)
         for i in range(n):
-            j = n - 1 - i
+            j = n - 1 - i  # trim from tail side of list
             if self.flag[j] == "#, ":
                 del self.flag[j]
+
+    def add_fuzzy(self):
+        n = len(self.flag)
+        if n == 0:
+            self.flag = ["#, fuzzy"]
+        elif not self.is_fuzzy():
+            print("n={}, flag[n-1]={}".format(n, self.flag[n - 1]))
+            self.flag[n - 1] = "#, fuzzy" + self.flag[n - 1][1:]
+        return
 
     reindex = re.compile(r"[^:]*:")
 
@@ -169,6 +193,9 @@ class PotData:
             elif l[0:1] == "#":  # TRANSLATOR-COMMENT
                 item.comment.append(l)
                 type = Line.COMMENT
+            elif l[0:9] == 'msgctxt "':  # msgctxt STRING
+                item.msgctxt = l[9:-1]
+                type = Line.MSGCTXT
             elif l[0:7] == 'msgid "':  # msgid STRING
                 item.msgid = l[7:-1]
                 type = Line.MSGID
@@ -218,16 +245,22 @@ class PotData:
                     print(l, file=file)
                 if item.pmsgid != "":
                     print('#| msgid "' + item.pmsgid + '"', file=file)
-                print('msgid "' + item.msgid + '"', file=file)
-                print('msgstr "' + item.msgstr + '"', file=file)
+                if item.msgctxt:
+                    print('msgctxt "' + item.msgctxt + '"', file=file)
+                    print('msgid "' + item.msgid + '"', file=file)
+                    print('msgstr "' + item.msgstr + '"', file=file)
+                elif item.msgid or item.msgstr:
+                    # printing msgid and msgstr if both of them are not ""
+                    print('msgid "' + item.msgid + '"', file=file)
+                    print('msgstr "' + item.msgstr + '"', file=file)
             else:
                 for l in item.obsolete:
                     print(l, file=file)
             print("", file=file)
         return
 
-    def output_po(self, file=sys.stdout, aligned=False):
-        if aligned:
+    def output_po(self, file=sys.stdout, raw=False):
+        if raw:
             self.output_raw(file=file)
         else:
             with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as ftmp:
@@ -242,15 +275,17 @@ class PotData:
                 )
         return
 
-    def unfuzzy_all(self):
+    def rm_fuzzy_all(self):
         """
-        Unfuzzy all PO contents
+        remove fuzzy for all PO contents
         """
         for item in self.items:
-            item.unfuzzy()
+            item.rm_fuzzy()
         return
 
-    def clean_msgstr(self, pattern_extracted=None, pattern_msgid=None, unfuzzy=True):
+    def clean_msgstr(
+        self, pattern_extracted=None, pattern_msgid=None, keep_fuzzy=False
+    ):
         """
         Clean msgstr if msgid is the same except for pattern matches
         """
@@ -268,17 +303,100 @@ class PotData:
                             break
                     else:  # pattern_extracted not found
                         item.msgstr = ""
-                    if unfuzzy:
-                        item.unfuzzy()
+                    if not keep_fuzzy:
+                        item.rm_fuzzy()
                 else:
                     item.msgstr = ""
-                    if unfuzzy:
-                        item.unfuzzy()
+                    if not keep_fuzzy:
+                        item.rm_fuzzy()
             else:
                 pass
         return
 
-    def dup_msgstr(self, pattern_extracted=None, pattern_msgid=None, unfuzzy=True):
+    def check_xml(self, force_check=False, itstool=False):
+        """
+        check matching xml tags between msgid and msgstr in a merged PO file.
+        """
+        reitstool = re.compile("<_:")
+        for item in self.items:
+            if not item.is_fuzzy() or force_check:
+                # trick to evaluate escape sequence: https://stackoverflow.com/questions/4020539/process-escape-sequences-in-a-string-in-python
+                msgid = codecs.escape_decode(bytes(item.msgid.strip(), "utf-8"))[
+                    0
+                ].decode("utf-8")
+                if itstool:
+                    msgid = reitstool.sub("<", msgid)
+                # print("msgid={}".format(msgid))
+                msgstr = codecs.escape_decode(bytes(item.msgstr.strip(), "utf-8"))[
+                    0
+                ].decode("utf-8")
+                if itstool:
+                    msgstr = reitstool.sub("<", msgstr)
+                # print("msgstr={}".format(msgstr))
+                # make minimal XML from PO strings
+                xmsgid = (
+                    '<?xml version="1.0" encoding="UTF-8"?>\n<xml>\n'
+                    + msgid
+                    + "\n</xml>"
+                )
+                xmsgstr = (
+                    '<?xml version="1.0" encoding="UTF-8"?>\n<xml>\n'
+                    + msgstr
+                    + "\n</xml>"
+                )
+                if msgid and not item.msgctxt:
+                    try:
+                        etid = ET.fromstring(xmsgid)
+                    except ET.ParseError as err:
+                        lineno, col = err.position
+                        line = next(IT.islice(io.StringIO(xmsgid), lineno - 1, lineno))
+                        item.comment.append(
+                            "# !!! WARN !!!: XML TAG parse error in msgid"
+                        )
+                        item.comment.append("#       {}".format(err.msg))
+                        item.comment.append("#       {}".format(line.rstrip()))
+                        item.comment.append("#       {:=>{}}".format("^", col))
+                        item.add_fuzzy()
+                        id_tags = []
+                    else:
+                        id_tags = [elem.tag for elem in etid.iter()]
+                        id_tags.sort()
+                else:
+                    id_tags = []
+                if msgid and msgstr and not item.msgctxt:
+                    try:
+                        etstr = ET.fromstring(xmsgstr)
+                    except ET.ParseError as err:
+                        lineno, col = err.position
+                        line = next(IT.islice(io.StringIO(xmsgstr), lineno - 1, lineno))
+                        item.comment.append(
+                            "# !!! WARN !!!: XML TAG parse error in msgstr"
+                        )
+                        item.comment.append("#       {}".format(err.msg))
+                        item.comment.append("#       {}".format(line.rstrip()))
+                        item.comment.append("#       {:=>{}}".format("^", col))
+                        item.add_fuzzy()
+                        str_tags = []
+                    else:
+                        str_tags = [elem.tag for elem in etstr.iter()]
+                        str_tags.sort()
+                else:
+                    str_tags = []
+                if id_tags and str_tags:
+                    if id_tags != str_tags:
+                        item.comment.append(
+                            "# !!! WARN !!!: XML TAG mismatch between msgid and msgstr"
+                        )
+                        item.comment.append(
+                            "#       msgid  = {}".format(",".join(id_tags))
+                        )
+                        item.comment.append(
+                            "#       msgstr = {}".format(",".join(str_tags))
+                        )
+                        item.add_fuzzy()
+        return
+
+    def dup_msgstr(self, pattern_extracted=None, pattern_msgid=None, rm_fuzzy=True):
         """
         Duplicate msgid as msgstr for pattern matches
         """
@@ -291,14 +409,14 @@ class PotData:
         for item in self.items:
             if pattern_msgid and re_pattern_msgid.search(item.msgid):
                 item.msgstr = item.msgid
-                if unfuzzy:
-                    item.unfuzzy()
+                if rm_fuzzy:
+                    item.rm_fuzzy()
             elif pattern_extracted:
                 for l in item.extracted:
                     if re_pattern_extracted.search(l):
                         item.msgstr = item.msgid
-                        if unfuzzy:
-                            item.unfuzzy()
+                        if rm_fuzzy:
+                            item.rm_fuzzy()
             else:
                 pass
         return
@@ -356,7 +474,7 @@ class PotData:
             if item.pmsgid == item.msgstr:
                 item.msgstr = item.msgid
                 item.pmsgid = ""
-                item.unfuzzy()
+                item.rm_fuzzy()
 
     def normalize(
         self,
@@ -482,8 +600,6 @@ E: *** master: {} < translation: {} ***
         return
 
 
-#######################################################################
-# This program functions differently if called via symlink
 #######################################################################
 if __name__ == "__main__":
     pots = PotData()

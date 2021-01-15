@@ -69,7 +69,5 @@ This revert the po file converted by the po_wdiff to the original state.
 
 
 #######################################################################
-# This program functions differently if called via symlink
-#######################################################################
 if __name__ == "__main__":
     po_previous()

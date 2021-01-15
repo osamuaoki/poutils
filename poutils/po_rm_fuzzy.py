@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # vim:se tw=0 sts=4 ts=4 et ai:
 """
-Copyright © 2018 Osamu Aoki
+Copyright © 2020 Osamu Aoki
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the
@@ -23,9 +23,9 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 import argparse
-import os  # for os.path.basename etc.
 import sys  # sys.stderr etc.
 import shutil
+import os  # for os.path.basename etc.
 
 # To test this in place, setup a symlink with "ln -sf . poutils"
 import poutils
@@ -33,12 +33,12 @@ import poutils
 #######################################################################
 # main program
 #######################################################################
-def po_update():
-    name = "po_update"
+def po_rm_fuzzy():
+    name = "po_rm_fuzzy"
     p = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="""\
-{0}: Update msgstr with new_msgid if msgstr == previous_msgid Version: {1}
+{0}: remove fuzzy flag from a PO file                      Version: {1}
 
 {2}
 """.format(
@@ -47,25 +47,18 @@ def po_update():
         epilog="See {}(1) manpage for more.".format(name),
     )
     p.add_argument(
-        "-k",
-        "--keep",
-        action="store_true",
-        default=False,
-        help="keep original file as *.orig",
+        "po", help="Input PO file name.  Output PO file suffix: .fuzzy_removed"
     )
-    p.add_argument("po", help="PO file")
     args = p.parse_args()
     master = poutils.PotData()
     with open(args.po, "r") as fp:
         master.read_po(file=fp)
-    master.update_msgstr()
-    if args.keep:
-        shutil.move(args.po, args.po + ".orig")
-    with open(args.po, "w") as fp:
+    master.rm_fuzzy_all()
+    with open(args.po + ".fuzzy_removed", "w") as fp:
         master.output_po(file=fp)
     return
 
 
 #######################################################################
 if __name__ == "__main__":
-    po_update()
+    po_rm_fuzzy()

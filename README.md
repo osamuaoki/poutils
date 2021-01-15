@@ -9,13 +9,16 @@ PO files: https://github.com/osamuaoki/poutils
 
 Reverse i18n workflow tools:
 
-* `po_align`: Align msgstr and msgid pairs to the original file location
-  with duplicate entries.  -- align PO sequence before po_combine
+* `po_align`: Align msgstr and msgid candidate pairs to the original file
+  location with duplicate entries using po4a generated files.  -- align PO
+  sequence before po_combine
 * `po_combine`: generate a PO file from POT files from the master
   and translation data. --  reverse i18n workflow.  see "po_combine -h"
 * `po_clean`: Clean up msgstr matched msgid intelligently (excluding
   <screen>, http...).  -- unset untranslated msgstr intelligently
-* `po_unfuzzy`: Unfazzy all PO contents -- unset fuzzy flags in PO
+* `po_check`: check matching between msgid and msgstr in a merged PO file.
+  -- sanity check on msgid and msgstr contents.  see "po_check -h"
+* `po_rm_fuzzy`: Remove fuzzy from all PO contents -- remove fuzzy flags in PO
 
 GUI/CUI PO editor helper tools: (previous related)
 
@@ -35,25 +38,10 @@ GUI/CUI PO editor helper tools: (previous related)
 ### Package build
 
     $ git deborig -f HEAD
-    $ pdebuild
+    $ debuild
 
 or
 
     $ ./setup.py deb
 
-## TODO
-
-### PO proofing (po_checkxml)
-
-* XML compliance within msgid/msgstr
-
-    * `<XXX> ... </XXX>` matching
-    * `<XXX> ... </XXX>` range overlap
-    * `<XXX > or <XXX />` or `</XXX>` only for `<`
-
-* XML tag number matching between msgid/msgstr (if `msgstr != ""`)
-
-    * match the number of `<XXX>`
-    * match the number of `</XXX>`
-    * match the number of `<XXX />`
 

@@ -51,7 +51,7 @@ class deb(distclean):
                 version = pkgver.group(2)
                 revision = pkgver.group(3)
         command = (
-            "git deborig -f HEAD; pdebuild; sudo dpkg -i ../{}_{}-{}_all.deb".format(
+            "git deborig -f HEAD; debuild; sudo dpkg -i ../{}_{}-{}_all.deb".format(
                 package, version, revision
             )
         )
@@ -66,7 +66,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="poutils",
-    version="0.2",
+    version="0.3",
     author="Osamu Aoki",
     author_email="osamu@debian.org",
     description="Utility for PO file",
@@ -87,8 +87,9 @@ setuptools.setup(
         "console_scripts": [
             "po_align=poutils.po_align:po_align",
             "po_combine=poutils.po_combine:po_combine",
+            "po_check=poutils.po_check:po_check",
             "po_clean=poutils.po_clean:po_clean",
-            "po_unfuzzy=poutils.po_unfuzzy:po_unfuzzy",
+            "po_rm_fuzzy=poutils.po_rm_fuzzy:po_rm_fuzzy",
             "po_update=poutils.po_update:po_update",
             "po_wdiff=poutils.po_wdiff:po_wdiff",
             "po_previous=poutils.po_previous:po_previous",

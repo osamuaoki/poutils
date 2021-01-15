@@ -140,7 +140,10 @@ number of extracted strings for the translation is less than the original for
 seemingly perfectly aligned data, this is probably the reason.
 
 Also, if the translation misses some tags such as <_:footnote-1/>, then
-alignment becomes broken and very hard to identify.
+alignment becomes broken and very hard to identify.  For this, use a command
+to check the consistency.
+
+  po_check -i <LANG>.po
 
 Use po_align to ensure easier matching (for po4a) and smooth operation of
 po_combine.  It is easier to debug source issues with po_align + po_combine.
@@ -148,8 +151,8 @@ po_combine.  It is easier to debug source issues with po_align + po_combine.
 When you have perfectly aligned data, the use of the native PO generation
 mechanism such as po4a-gettextize with -l option for po4a may have advantage
 over the use of po_combine.  (Also, for poxml, split2po facilitates this
-functionality.)  You may need to clean and unfuzzy resulting PO using po_clean
-and po_unfazzy for this native approach.
+functionality.)  You may need to clean the resulting PO using po_clean
+and po_rm_fuzzy for this native approach.
 
 TIP: pandoc is a nice document data format conversion tool.
 
@@ -168,8 +171,8 @@ See {}(1) manpage for more.
     p.add_argument(
         "-v", "--verbose", action="store_true", default=False, help="verbose output"
     )
-    p.add_argument("master_pot", help="POT file from the English source")
-    p.add_argument("translated_pot", help="POT file from the translated source")
+    p.add_argument("master_pot", help="Input POT file from the English source")
+    p.add_argument("translated_pot", help="Input POT file from the translated source")
     p.add_argument("output", help="Output PO file")
     args = p.parse_args()
     master = poutils.PotData()
@@ -187,8 +190,6 @@ See {}(1) manpage for more.
     return
 
 
-#######################################################################
-# This program functions differently if called via symlink
 #######################################################################
 if __name__ == "__main__":
     po_combine()

@@ -1,3 +1,10 @@
+poutils (0.3-1) unstable; urgency=medium
+
+  * Add po_check and itstool support
+  * Rename po_unfuzzy to po_rm_fuzzy
+
+ -- Osamu Aoki <osamu@debian.org>  Sat, 16 Jan 2021 11:20:41 +0900
+
 poutils (0.2-1) unstable; urgency=medium
 
   * Refine po_combine

@@ -47,27 +47,34 @@ def po_clean():
         epilog="See {}(1) manpage for more.".format(name),
     )
     p.add_argument(
-        "-f",
-        "--fuzzy",
-        action="store_false",
-        default=True,
+        "-k",
+        "--keep_fuzzy",
+        action="store_true",
+        default=False,
         help="keep all fuzzy markers",
     )
-    p.add_argument("po", help="PO file")
+    p.add_argument(
+        "-r",
+        "--raw",
+        action="store_true",
+        default=False,
+        help="raw output without uniq",
+    )
+    p.add_argument("po", help="Input PO file name.  Output PO file suffix: .cleaned")
     args = p.parse_args()
     master = poutils.PotData()
     with open(args.po, "r") as fp:
         master.read_po(file=fp)
     master.clean_msgstr(
-        pattern_extracted=r"<screen>", pattern_msgid=r"^https?://", unfuzzy=args.fuzzy
+        pattern_extracted=r"<screen>",
+        pattern_msgid=r"^https?://",
+        keep_fuzzy=args.keep_fuzzy,
     )
     with open(args.po + ".cleaned", "w") as fp:
-        master.output_po(file=fp)
+        master.output_po(file=fp, raw=args.raw)
     return
 
 
-#######################################################################
-# This program functions differently if called via symlink
 #######################################################################
 if __name__ == "__main__":
     po_clean()

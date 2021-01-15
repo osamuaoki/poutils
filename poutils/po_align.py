@@ -47,7 +47,7 @@ def po_align():
         ),
         epilog="See {}(1) manpage for more.".format(name),
     )
-    p.add_argument("po", help="PO file")
+    p.add_argument("po", help="Input PO file name.  Output PO file suffix: .aligned")
     args = p.parse_args()
     master = poutils.PotData()
     with open(args.po, "r") as fp:
@@ -68,8 +68,6 @@ def po_align():
     return
 
 
-#######################################################################
-# This program functions differently if called via symlink
 #######################################################################
 if __name__ == "__main__":
     po_align()

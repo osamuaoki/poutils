@@ -81,7 +81,5 @@ using the "po_previous" command.
 
 
 #######################################################################
-# This program functions differently if called via symlink
-#######################################################################
 if __name__ == "__main__":
     po_wdiff()
